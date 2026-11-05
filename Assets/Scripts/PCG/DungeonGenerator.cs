@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-public class DungeonGenerator : MonoBehaviour
+// partial: fitur tambahan (validasi, aturan spawn, panel/overlay)
+// dipisah ke file DungeonGenerator.*.cs agar kode modul tetap utuh.
+public partial class DungeonGenerator : MonoBehaviour
 {
     [Header("Dungeon Size")]
     [SerializeField] private int mapWidth = 60;
@@ -16,7 +18,12 @@ public class DungeonGenerator : MonoBehaviour
     [Header("Room Settings")]
     [SerializeField] private int minRoomSize = 5;
     [SerializeField] private int roomMargin = 2;
-    [SerializeField] private bool farthestGoal = false;
+
+    // Menggantikan bool farthestGoal: A = room terakhir,
+    // B = terjauh (Euclidean, rekomendasi modul bagian 64),
+    // C = terjauh (jarak BFS / shortest path, challenge bagian 108).
+    [SerializeField] private GoalPlacementStrategy goalStrategy =
+        GoalPlacementStrategy.FarthestEuclidean;
 
     [Header("Generation")]
     [SerializeField] private int seed = 12345;
@@ -55,42 +62,77 @@ public class DungeonGenerator : MonoBehaviour
     private void Update()
     {
         if (Keyboard.current != null &&
-            Keyboard.current.rKey.wasPressedThisFrame)
+            Keyboard.current.rKey.wasPressedThisFrame &&
+            !DungeonControlPanel.IsTyping)
         {
             seed++;
             GenerateDungeon();
         }
+
+        UpdateGameplay();
     }
 
     public void GenerateDungeon()
     {
+        System.Diagnostics.Stopwatch stopwatch =
+            System.Diagnostics.Stopwatch.StartNew();
+
         ClearDungeon();
+
+        ApplyParameterConstraints();
 
         SetupSeed();
 
-        InitializeGrid();
+        requestedSeed = seed;
+        isValid = false;
 
-        CreateBSP();
-
-        CreateRooms();
-
-        CreateCorridors();
-
-        if (farthestGoal)
+        // Generate-and-Test: Generate -> Validate -> (gagal? seed+1, ulangi)
+        for (attemptsUsed = 1;
+            attemptsUsed <= maxGenerationAttempts;
+            attemptsUsed++)
         {
-            PlaceStartAndFarthestGoal();
-        }
-        else
-        {
-            PlaceStartAndGoal();
-        }
+            if (attemptsUsed > 1)
+            {
+                seed++;
+                Random.InitState(seed);
+            }
 
-        if (!HasPathToGoal())
-        {
+            InitializeGrid();
+
+            CreateBSP();
+
+            CreateRooms();
+
+            CreateCorridors();
+
+            PlaceStartAndGoalByStrategy();
+
+            if (ValidateDungeon() &&
+                HasPathToGoal() &&
+                ValidateReachability())
+            {
+                isValid = true;
+                break;
+            }
+
             Debug.LogWarning(
-                "Dungeon tidak valid: Goal tidak dapat dicapai."
+                "Percobaan " + attemptsUsed + " (seed " + seed +
+                ") tidak valid: " + validationMessage +
+                ". Generate ulang..."
+            );
+        }
+
+        if (!isValid)
+        {
+            attemptsUsed = maxGenerationAttempts;
+
+            Debug.LogError(
+                "Dungeon gagal dibuat setelah " +
+                maxGenerationAttempts +
+                " percobaan. Ubah parameter generator."
             );
 
+            ComputeMetrics(stopwatch);
             return;
         }
 
@@ -98,7 +140,13 @@ public class DungeonGenerator : MonoBehaviour
 
         SpawnGameplayObjects();
 
-        Debug.Log("Dungeon generated with seed: " + seed);
+        BuildDebugOverlay();
+
+        ComputeMetrics(stopwatch);
+
+        Debug.Log("Dungeon generated with seed: " + seed +
+                  " (percobaan ke-" + attemptsUsed + ")\n" +
+                  metrics.ToLogString());
     }
 
     private void SetupSeed()
@@ -380,9 +428,15 @@ public class DungeonGenerator : MonoBehaviour
 
         for (int x = start; x <= end; x++)
         {
-            if (IsInsideGrid(x, y))
+            // corridorWidth: 1 = modul dasar, 2-3 = corridor lebar
+            for (int offset = 0; offset < corridorWidth; offset++)
             {
-                grid[x, y] = TileType.Floor;
+                int targetY = y + offset - (corridorWidth - 1) / 2;
+
+                if (IsInsideInterior(x, targetY))
+                {
+                    grid[x, targetY] = TileType.Floor;
+                }
             }
         }
     }
@@ -397,9 +451,14 @@ public class DungeonGenerator : MonoBehaviour
 
         for (int y = start; y <= end; y++)
         {
-            if (IsInsideGrid(x, y))
+            for (int offset = 0; offset < corridorWidth; offset++)
             {
-                grid[x, y] = TileType.Floor;
+                int targetX = x + offset - (corridorWidth - 1) / 2;
+
+                if (IsInsideInterior(targetX, y))
+                {
+                    grid[targetX, y] = TileType.Floor;
+                }
             }
         }
     }
@@ -554,9 +613,11 @@ public class DungeonGenerator : MonoBehaviour
 
     private void SpawnGameplayObjects()
     {
+        PrepareSpawnRules();
         SpawnPlayer();
         SpawnEnemies();
         SpawnItems();
+        SpawnSpecialRooms();
     }
 
     private void SpawnPlayer()
@@ -570,29 +631,11 @@ public class DungeonGenerator : MonoBehaviour
                 startPosition.y
             );
 
-        Instantiate(
+        playerInstance = Instantiate(
             playerPrefab,
             position + Vector3.up * 1f,
             Quaternion.identity
         );
-    }
-
-    private Vector2Int GetRandomFloorPosition()
-    {
-        for (int attempt = 0;
-            attempt < 100;
-            attempt++)
-        {
-            int x = Random.Range(1, mapWidth - 1);
-            int y = Random.Range(1, mapHeight - 1);
-
-            if (grid[x, y] == TileType.Floor)
-            {
-                return new Vector2Int(x, y);
-            }
-        }
-
-        return startPosition;
     }
 
     private void SpawnEnemies()
@@ -600,22 +643,34 @@ public class DungeonGenerator : MonoBehaviour
         if (enemyPrefab == null)
             return;
 
-        for (int i = 0; i < enemyCount; i++)
+        // CATATAN: GetRandomFloorPosition() dari modul (bagian 78) diganti.
+        // Versi modul mengembalikan startPosition setelah 100x gagal, dan
+        // loop "i--" di sini lalu bisa berputar tanpa akhir (Unity hang).
+        // Sekarang semua cell yang lolos constraint dikumpulkan dulu, lalu
+        // dipilih acak; jika habis, spawn berhenti dengan peringatan.
+        //
+        // Constraint: Floor di dalam room, bukan safe room, di luar
+        // safeRadius, bukan pintu room, tidak di jalur wajib Start->Goal,
+        // dan belum terisi objek lain.
+        List<Vector2Int> candidates =
+            CollectSpawnCandidates(true, null);
+
+        int targetCount = GetTargetEnemyCount();
+
+        for (int i = 0; i < targetCount; i++)
         {
-            Vector2Int gridPosition =
-                GetRandomFloorPosition();
+            Vector2Int gridPosition;
 
-            float distanceFromStart =
-                Vector2Int.Distance(
-                    gridPosition,
-                    startPosition
-                );
-
-            if (distanceFromStart < 8f)
+            if (!TakeRandomTile(candidates, out gridPosition))
             {
-                i--;
-                continue;
+                Debug.LogWarning(
+                    "Tempat valid habis: hanya " + i + " dari " +
+                    targetCount + " enemy yang dapat ditempatkan."
+                );
+                break;
             }
+
+            enemySpawnTiles.Add(gridPosition);
 
             Vector3 worldPosition =
                 GridToWorld(
@@ -641,10 +696,23 @@ public class DungeonGenerator : MonoBehaviour
         if (itemPrefab == null)
             return;
 
+        List<Vector2Int> candidates =
+            CollectSpawnCandidates(false, null);
+
         for (int i = 0; i < itemCount; i++)
         {
-            Vector2Int gridPosition =
-                GetRandomFloorPosition();
+            Vector2Int gridPosition;
+
+            if (!TakeRandomTile(candidates, out gridPosition))
+            {
+                Debug.LogWarning(
+                    "Tempat valid habis: hanya " + i + " dari " +
+                    itemCount + " item yang dapat ditempatkan."
+                );
+                break;
+            }
+
+            itemSpawnTiles.Add(gridPosition);
 
             Vector3 worldPosition =
                 GridToWorld(
@@ -662,6 +730,10 @@ public class DungeonGenerator : MonoBehaviour
                 );
 
             item.name = "Item_" + i;
+
+            // Item tidak boleh menghalangi gerak player.
+            MakeTrigger(item);
+            itemObjects.Add(item);
         }
     }
 
@@ -672,16 +744,24 @@ public class DungeonGenerator : MonoBehaviour
 
         if (existing != null)
         {
+            // Destroy() baru dieksekusi di akhir frame, jadi ganti nama
+            // agar tidak tertukar dengan level baru di frame yang sama.
+            existing.name = "GeneratedLevel_Old";
             Destroy(existing);
         }
+
+        levelRoot = null;
 
         GameObject oldPlayer =
             GameObject.FindWithTag("Player");
 
         if (oldPlayer != null)
         {
+            oldPlayer.tag = "Untagged";
             Destroy(oldPlayer);
         }
+
+        playerInstance = null;
     }
 
     private void OnDrawGizmos()
@@ -712,16 +792,15 @@ public class DungeonGenerator : MonoBehaviour
                 size
             );
         }
+
+        DrawExtraGizmos();
     }
 
     private bool ValidateDungeon()
     {
         if (rooms == null || rooms.Count < 2)
         {
-            Debug.LogWarning(
-                "Dungeon invalid: jumlah room terlalu sedikit."
-            );
-
+            validationMessage = "jumlah room terlalu sedikit";
             return false;
         }
 
@@ -729,6 +808,7 @@ public class DungeonGenerator : MonoBehaviour
                 startPosition.x,
                 startPosition.y))
         {
+            validationMessage = "Start di luar grid";
             return false;
         }
 
@@ -736,6 +816,16 @@ public class DungeonGenerator : MonoBehaviour
                 goalPosition.x,
                 goalPosition.y))
         {
+            validationMessage = "Goal di luar grid";
+            return false;
+        }
+
+        // Hard constraint: Start & Goal berada di floor dan berbeda.
+        if (grid[startPosition.x, startPosition.y] != TileType.Start ||
+            grid[goalPosition.x, goalPosition.y] != TileType.Goal ||
+            startPosition == goalPosition)
+        {
+            validationMessage = "Start/Goal tidak valid";
             return false;
         }
 
@@ -812,9 +902,8 @@ public class DungeonGenerator : MonoBehaviour
             }
         }
 
+        validationMessage = "Goal tidak dapat dicapai (BFS)";
         return false;
     }
-
-
 }
 
