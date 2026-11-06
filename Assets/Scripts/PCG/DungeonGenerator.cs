@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Unity.AI.Navigation;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -53,6 +55,9 @@ public partial class DungeonGenerator : MonoBehaviour
 
     private Vector2Int startPosition;
     private Vector2Int goalPosition;
+
+    [Header("AI Navigation")]
+    [SerializeField] private NavMeshSurface navMeshSurface;
 
     private void Start()
     {
@@ -147,6 +152,9 @@ public partial class DungeonGenerator : MonoBehaviour
         Debug.Log("Dungeon generated with seed: " + seed +
                   " (percobaan ke-" + attemptsUsed + ")\n" +
                   metrics.ToLogString());
+        
+        // Generate Nav Mesh Surface Data
+        navMeshSurface.BuildNavMesh();
     }
 
     private void SetupSeed()
@@ -527,6 +535,9 @@ public partial class DungeonGenerator : MonoBehaviour
             new GameObject("GeneratedLevel");
 
         levelRoot = root.transform;
+
+        navMeshSurface = root.AddComponent<NavMeshSurface>();
+        navMeshSurface.collectObjects = CollectObjects.Children;
     }
 
     private void BuildDungeon()

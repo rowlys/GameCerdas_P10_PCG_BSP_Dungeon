@@ -476,6 +476,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a02cec42c337bb64282a324672bda87d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DungeonGenerator
+  showRoomBounds: 1
+  showMainPath: 1
+  showSpawnInfo: 1
+  autoAddControlPanel: 1
+  safeRadius: 8
+  spawnInRoomsOnly: 1
+  keepMainPathClear: 1
+  useEnemyDensity: 0
+  floorTilesPerEnemy: 50
+  spawnBoss: 0
+  spawnTreasure: 0
+  bossScale: 1.6
+  pickupRadius: 0.6
+  corridorWidth: 1
+  maxGenerationAttempts: 10
+  requireAllRoomsReachable: 1
   mapWidth: 60
   mapHeight: 40
   tileSize: 1
@@ -483,7 +499,7 @@ MonoBehaviour:
   maxLeafSize: 20
   minRoomSize: 5
   roomMargin: 2
-  farthestGoal: 0
+  goalStrategy: 1
   seed: 12345
   randomSeed: 0
   floorPrefab: {fileID: 1853300796629512104, guid: 5684f5e1b748deb4ab123d05b0849617, type: 3}
@@ -495,6 +511,7 @@ MonoBehaviour:
   enemyCount: 8
   itemCount: 5
   safeRoomCount: 1
+  navMeshSurface: {fileID: 0}
 --- !u!1 &1687347947
 GameObject:
   m_ObjectHideFlags: 0

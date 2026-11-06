@@ -1,5 +1,57 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &1042218685797970103
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 831898546988400587}
+  - component: {fileID: 3793951718136989255}
+  m_Layer: 0
+  m_Name: Sensor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &831898546988400587
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1042218685797970103}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 978889690345429474}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3793951718136989255
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1042218685797970103}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e8f3166108904c0478d4970fbbe6fc2f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteeringSensor
+  player: {fileID: 0}
+  visionRange: 10
+  visionAngle: 90
+  eyeHeight: 0
+  hearingRange: 4
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 64
 --- !u!1 &8474544832804172523
 GameObject:
   m_ObjectHideFlags: 0
@@ -13,6 +65,9 @@ GameObject:
   - component: {fileID: 7700048791982460644}
   - component: {fileID: 3722444133377030371}
   - component: {fileID: 69322572654582551}
+  - component: {fileID: 7656766234166522047}
+  - component: {fileID: 8997640738381254406}
+  - component: {fileID: 310427008339624655}
   m_Layer: 0
   m_Name: EnemyPrefab
   m_TagString: Untagged
@@ -32,7 +87,8 @@ Transform:
   m_LocalPosition: {x: 0.35355, y: 0.24749, z: 0.35355}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 831898546988400587}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &282314495888358517
@@ -122,9 +178,82 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8474544832804172523}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 60563845dd6035548a278b3e5d054d56, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SimpleEnemy
   rotationSpeed: 60
+--- !u!114 &7656766234166522047
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8474544832804172523}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9962f4d4dc8ad484e98452401ca1f2ce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SteeringAgent
+  player: {fileID: 0}
+  agent: {fileID: 8997640738381254406}
+  perception: {fileID: 3793951718136989255}
+  patrolPoints: []
+  patrolSpeed: 2
+  waypointTolerance: 0.5
+  alertConfirmTime: 0.75
+  alertGiveUpTime: 3
+  alertTurnSpeed: 5
+  chaseSpeed: 4
+  lostPlayerDelay: 2
+  searchSpeed: 3
+  searchDuration: 8
+  searchRadius: 4
+  searchLookTime: 1.5
+  searchTurnSpeed: 120
+  attackRange: 2
+  attackExitRange: 2.75
+  attackDamage: 10
+  attackCooldown: 1.5
+  safePoint: {fileID: 0}
+  fleeSpeed: 5
+  lowHealthThreshold: 30
+  healRate: 10
+  healTargetPercent: 1
+  currentState: 0
+--- !u!195 &8997640738381254406
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8474544832804172523}
+  m_Enabled: 1
+  m_AgentTypeID: 0
+  m_Radius: 0.5
+  m_Speed: 3.5
+  m_Acceleration: 8
+  avoidancePriority: 50
+  m_AngularSpeed: 120
+  m_StoppingDistance: 0
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 2
+  m_BaseOffset: 1
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
+--- !u!114 &310427008339624655
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8474544832804172523}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 336103b8efa5aea4c8e4ae682d915828, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyHealth
+  maxHealth: 100
