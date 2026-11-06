@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: b50bad7b73e551e47aed5de82dfa2eb9, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -511,7 +511,9 @@ MonoBehaviour:
   enemyCount: 8
   itemCount: 5
   safeRoomCount: 1
-  navMeshSurface: {fileID: 0}
+  obstacleLayer:
+    serializedVersion: 2
+    m_Bits: 128
 --- !u!1 &1687347947
 GameObject:
   m_ObjectHideFlags: 0

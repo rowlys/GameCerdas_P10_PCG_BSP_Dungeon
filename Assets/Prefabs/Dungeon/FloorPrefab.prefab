@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 6532168738663115144}
   - component: {fileID: 76361805841752106}
   - component: {fileID: 772112481385431425}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: FloorPrefab
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -67,7 +67,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 35090c86f5414624b800af141b46f0f2, type: 2}
+  - {fileID: 2100000, guid: 319eceb680f53f94a9f35becbdbd70bc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

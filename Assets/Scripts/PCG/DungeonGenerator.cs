@@ -57,7 +57,8 @@ public partial class DungeonGenerator : MonoBehaviour
     private Vector2Int goalPosition;
 
     [Header("AI Navigation")]
-    [SerializeField] private NavMeshSurface navMeshSurface;
+    [SerializeField] private LayerMask obstacleLayer;
+    private NavMeshSurface navMeshSurface;
 
     private void Start()
     {
@@ -538,6 +539,7 @@ public partial class DungeonGenerator : MonoBehaviour
 
         navMeshSurface = root.AddComponent<NavMeshSurface>();
         navMeshSurface.collectObjects = CollectObjects.Children;
+        navMeshSurface.layerMask = obstacleLayer;
     }
 
     private void BuildDungeon()
